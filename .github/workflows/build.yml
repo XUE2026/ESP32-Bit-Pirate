@@ -1,0 +1,45 @@
+name: Build ESP32 Bit Pirate
+
+on:
+  push:
+    branches:
+      - pioarduino
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: |
+          pip install platformio
+
+      - name: Build s3-devkit-n16-r8
+        run: |
+          pio run -e s3-devkit-n16-r8 --verbose
+
+      - name: List build artifacts
+        run: |
+          echo "=== Build Output ==="
+          find . -name "*.bin" -o -name "*.elf" -o -name "*.map" 2>/dev/null | head -20
+          echo "=== Firmware files ==="
+          find . -path "*/s3-devkit-n16-r8/*" -name "*.bin" 2>/dev/null | head -20
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-s3-devkit-n16-r8
+          path: |
+            .pio/build/s3-devkit-n16-r8/*.bin
+            .pio/build/s3-devkit-n16-r8/firmware.elf
+            .pio/build/s3-devkit-n16-r8/partitions.bin
+          retention-days: 7
