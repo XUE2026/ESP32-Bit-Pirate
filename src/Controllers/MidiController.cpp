@@ -140,10 +140,11 @@ void MidiController::handleSend(const TerminalCommand& cmd) {
     while (ss >> token) {
         if (token.size() >= 2 && token.substr(0, 2) == "0x") {
             bytes.push_back((uint8_t)std::stoul(token, nullptr, 16));
-        } else if (argTransformer.isValidHex(token)) {
-            bytes.push_back((uint8_t)std::stoul(token, nullptr, 16));
-        } else if (argTransformer.isValidInt(token)) {
+        } else if (argTransformer.isValidNumber(token)) {
             bytes.push_back((uint8_t)std::stoul(token));
+        } else if (token.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos && token.size() <= 2) {
+            // hex without 0x prefix (e.g. "90", "3C")
+            bytes.push_back((uint8_t)std::stoul(token, nullptr, 16));
         } else {
             terminalView.println("MIDI send: invalid byte '" + token + "'");
             return;
