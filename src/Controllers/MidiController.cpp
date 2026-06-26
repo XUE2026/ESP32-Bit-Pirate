@@ -3,6 +3,17 @@
 #include <iomanip>
 #include <vector>
 
+// Helper: split space-delimited args string into tokens
+static std::vector<std::string> splitArgs(const std::string& s) {
+    std::vector<std::string> tokens;
+    std::stringstream ss(s);
+    std::string tok;
+    while (ss >> tok) {
+        tokens.push_back(tok);
+    }
+    return tokens;
+}
+
 /*
 Constructor
 */
@@ -197,7 +208,7 @@ Send a Note On/Off message
 void MidiController::handleNote(const TerminalCommand& cmd) {
     if (!ensurePresent_()) return;
 
-    auto args = cmd.getArgs();
+    auto args = splitArgs(cmd.getArgs());
     if (args.size() < 2) {
         terminalView.println("Usage: note <channel(1-16)> <note(0-127)> [velocity(0-127)]");
         terminalView.println("If velocity is 0, sends Note Off.");
@@ -228,7 +239,7 @@ Send Control Change message
 void MidiController::handleCc(const TerminalCommand& cmd) {
     if (!ensurePresent_()) return;
 
-    auto args = cmd.getArgs();
+    auto args = splitArgs(cmd.getArgs());
     if (args.size() < 2) {
         terminalView.println("Usage: cc <channel(1-16)> <controller(0-127)> [value(0-127)]");
         terminalView.println("Example: cc 1 7 100  (Volume ch1 = 100)");
@@ -253,7 +264,7 @@ Send Program Change
 void MidiController::handlePgm(const TerminalCommand& cmd) {
     if (!ensurePresent_()) return;
 
-    auto args = cmd.getArgs();
+    auto args = splitArgs(cmd.getArgs());
     if (args.empty()) {
         terminalView.println("Usage: pgm <channel(1-16)> <program(0-127)>");
         terminalView.println("       program <channel(1-16)> <program(0-127)>");
@@ -277,7 +288,7 @@ Send Pitch Bend
 void MidiController::handlePitch(const TerminalCommand& cmd) {
     if (!ensurePresent_()) return;
 
-    auto args = cmd.getArgs();
+    auto args = splitArgs(cmd.getArgs());
     if (args.empty()) {
         terminalView.println("Usage: pitch <channel(1-16)> [value(0-16383)]");
         terminalView.println("Default value is 8192 (center).");
@@ -347,7 +358,7 @@ Toggle Thru
 void MidiController::handleThru(const TerminalCommand& cmd) {
     if (!ensurePresent_()) return;
 
-    auto args = cmd.getArgs();
+    auto args = splitArgs(cmd.getArgs());
     bool enable = !midiService.getThru(); // toggle if no arg
 
     if (!args.empty()) {
@@ -489,7 +500,7 @@ void MidiController::handleApiConfig() {
 API management - whitelist add/remove
 */
 void MidiController::handleApiWhitelist(const TerminalCommand& cmd) {
-    auto args = cmd.getArgs();
+    auto args = splitArgs(cmd.getArgs());
     if (args.size() < 2) {
         terminalView.println("Usage: api whitelist add|del <ip>");
         terminalView.println("  add <ip>   Add an IP to the whitelist");
@@ -515,7 +526,7 @@ void MidiController::handleApiWhitelist(const TerminalCommand& cmd) {
 API management - blacklist add/remove
 */
 void MidiController::handleApiBlacklist(const TerminalCommand& cmd) {
-    auto args = cmd.getArgs();
+    auto args = splitArgs(cmd.getArgs());
     if (args.size() < 2) {
         terminalView.println("Usage: api blacklist add|del <ip>");
         terminalView.println("  add <ip>   Add an IP to the blacklist");
@@ -541,7 +552,7 @@ void MidiController::handleApiBlacklist(const TerminalCommand& cmd) {
 API management - toggle auto-start
 */
 void MidiController::handleApiAutostart(const TerminalCommand& cmd) {
-    auto args = cmd.getArgs();
+    auto args = splitArgs(cmd.getArgs());
     if (args.empty()) {
         bool current = midiApiService.getAutoStart();
         terminalView.println("MIDI API: Auto-start is " + std::string(current ? "enabled" : "disabled"));
