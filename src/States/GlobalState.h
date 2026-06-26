@@ -157,6 +157,13 @@ private:
     uint8_t midiTxPin = 1;
     uint8_t midiRxPin = 2;
 
+    // MIDI API Configuration
+    bool midiApiAutostart = true;    // Auto-start API on WiFi connect
+    bool midiApiUseWhitelist = false; // false = blacklist mode, true = whitelist mode
+    std::vector<std::string> midiApiWhitelist;   // Allowed IPs
+    std::vector<std::string> midiApiBlacklist;   // Blocked IPs
+    bool midiApiRunning = false;     // Current API state
+
     // JTAG Default Pin
     std::vector<uint8_t> jtagScanPins = { 1, 3, 5, 7, 9 };
 
@@ -421,6 +428,22 @@ public:
 
     void setMidiTxPin(uint8_t pin) { midiTxPin = pin; }
     void setMidiRxPin(uint8_t pin) { midiRxPin = pin; }
+
+    // MIDI API
+    bool getMidiApiAutostart() const { return midiApiAutostart; }
+    void setMidiApiAutostart(bool v) { midiApiAutostart = v; }
+
+    bool getMidiApiUseWhitelist() const { return midiApiUseWhitelist; }
+    void setMidiApiUseWhitelist(bool v) { midiApiUseWhitelist = v; }
+
+    std::vector<std::string>& getMidiApiWhitelist() { return midiApiWhitelist; }
+    void setMidiApiWhitelist(const std::vector<std::string>& v) { midiApiWhitelist = v; }
+
+    std::vector<std::string>& getMidiApiBlacklist() { return midiApiBlacklist; }
+    void setMidiApiBlacklist(const std::vector<std::string>& v) { midiApiBlacklist = v; }
+
+    bool getMidiApiRunning() const { return midiApiRunning; }
+    void setMidiApiRunning(bool v) { midiApiRunning = v; }
 
     // SD Card
     uint8_t getSdCardCsPin() const { return sdCardCsPin; }

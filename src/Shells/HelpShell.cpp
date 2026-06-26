@@ -510,6 +510,7 @@ void HelpShell::cmdMidi() {
     printHeader("MIDI");
 
     static const char* const lines[] = {
+        "config               - Configure MIDI UART GPIO pins",
         "send <hex>           - Send raw MIDI bytes",
         "receive              - Receive and decode MIDI messages",
         "sniff                - Raw hex dump of MIDI traffic",
@@ -522,8 +523,17 @@ void HelpShell::cmdMidi() {
         "stop                 - Send Stop real-time message",
         "continue             - Send Continue real-time message",
         "thru [on/off]        - Toggle MIDI Thru (echo RX to TX)",
-        "reset                - Reset interface",
-        "config               - Configure MIDI UART GPIO pins"
+        "usb                  - Show USB MIDI (API) status",
+        "usb start            - Start MIDI API server on ports 72 (HTTP) / 73 (WS)",
+        "usb stop             - Stop MIDI API server",
+        "api                  - Show API management menu",
+        "api start            - Start the API server",
+        "api stop             - Stop the API server",
+        "api config           - Configure whitelist/blacklist mode",
+        "api whitelist <cmd>  - Manage whitelist (add|del <ip>)",
+        "api blacklist <cmd>  - Manage blacklist (add|del <ip>)",
+        "api autostart <on|off> - Toggle auto-start on WiFi connect",
+        "reset                - Reset interface"
     };
 
     printLines(lines, (int)(sizeof(lines) / sizeof(lines[0])));

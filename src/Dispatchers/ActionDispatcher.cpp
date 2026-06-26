@@ -31,6 +31,13 @@ Run loop
 */
 void ActionDispatcher::run() {
     while (true) {
+        // MIDI API auto-start on WiFi connect
+        auto& midiApi = provider.getMidiApiService();
+        auto& wifiService = provider.getWifiService();
+        if (wifiService.isConnected() && midiApi.getAutoStart() && !midiApi.isRunning()) {
+            midiApi.begin();
+        }
+
         auto mode = ModeEnumMapper::toString(state.getCurrentMode());
         provider.getTerminalView().printPrompt(mode);
         std::string action = getUserAction();

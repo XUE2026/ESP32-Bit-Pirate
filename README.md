@@ -38,6 +38,7 @@ For hardware extensions, see the [ESP32 Bus Expander](https://github.com/geo-tp/
    - [RF24](https://github.com/geo-tp/ESP32-Bit-Pirate/wiki/21-RF24) (scan, send, receive)
    - [FM](https://github.com/geo-tp/ESP32-Bit-Pirate/wiki/22-FM) (analyze, broadcast)
    - [CELL](https://github.com/geo-tp/ESP32-Bit-Pirate/wiki/23-CELL) (dump sim card, sms, call)
+   - **[MIDI](wiki/24-MIDI)** (UART MIDI 5-pin DIN, USB MIDI device, WiFi MIDI API on ports 72/73)
 
 
 - **Protocol sniffers** I2C, UART, SPI, 1Wire, 2wire, CAN, Wi-Fi, Bluetooth, SubGhz.
@@ -100,6 +101,120 @@ For hardware extensions, see the [ESP32 Bus Expander](https://github.com/geo-tp/
    sniff
    ...
     ```
+
+## MIDI (Musical Instrument Digital Interface)
+
+**⚠️ 硬件说明**: 本MIDI实现仅针对 **ESP32-S3 N16R8**（16MB Flash / 8MB PSRAM）进行测试和优化。其他硬件平台未经测试，不保证功能完整。
+
+MIDI模式将ESP32 Bit Pirate转变为功能完整的MIDI接口工具，支持三种MIDI通路：
+
+### 1. UART MIDI（5-Pin DIN，标准MIDI硬件接口）
+
+基于ESP32 UART2，31250 baud 8N1标准MIDI速率。
+
+**命令：**
+| 命令 | 说明 |
+|------|------|
+| `config` | 配置MIDI TX/RX GPIO引脚 |
+| `send <hex>` | 发送原始MIDI字节 |
+| `receive` | 持续监听并解码MIDI消息，按[ENTER]停止 |
+| `sniff` | MIDI流量原始十六进制转储 |
+| `note <ch> <n> [vel]` | 发送Note On/Off（ch=1-16, note=0-127, vel=0-127，vel=0→Note Off） |
+| `cc <ch> <c> [val]` | 发送Control Change（ctrl=0-127, val=0-127） |
+| `pgm <ch> <p>` | 发送Program Change（prog=0-127，如0=Grand Piano） |
+| `pitch <ch> [val]` | 发送Pitch Bend（val=0-16383，中心=8192） |
+| `clock` | 持续发送实时时钟消息，按[ENTER]停止 |
+| `start` | 发送Start实时消息 |
+| `stop` | 发送Stop实时消息 |
+| `continue` | 发送Continue实时消息 |
+| `thru [on/off]` | 开/关MIDI Thru（RX输入透明转发到TX输出） |
+| `reset` | 重置MIDI接口 |
+
+### 2. USB MIDI 设备类（Type-C口）
+
+通过ESP32-S3原生USB Type-C口暴露为USB MIDI设备。连接电脑后，DAW（如FL Studio、Ableton Live、MuseScore等）可直接识别为MIDI输入/输出设备。
+
+- 基于TinyUSB实现，需构建时启用`CONFIG_TINYUSB_MIDI_ENABLED`
+- 不占用内置USB Serial/JTAG（`Serial`仍可用）
+- USB MIDI设备与WiFi API服务共用MidiService数据通路
+
+**命令：**
+| 命令 | 说明 |
+|------|------|
+| `usb` | 查看USB MIDI状态 |
+| `usb start` | 启动MIDI API服务（同时启用USB MIDI功能） |
+| `usb stop` | 停止MIDI API服务 |
+
+### 3. WiFi MIDI API（端口72 HTTP + 端口73 WebSocket）
+
+当WiFi连接成功后，可自动在端口72和73启动MIDI API服务。
+
+**端口72 — REST API (HTTP/JSON)：**
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/info` | GET | 设备信息、MIDI状态、API配置 |
+| `/status` | GET | 当前MIDI运行状态 |
+| `/send` | POST | 发送MIDI消息（JSON body） |
+
+**`POST /send` 支持的消息格式：**
+
+```json
+{"note":{"channel":1,"note":60,"velocity":100}}
+{"cc":{"channel":1,"controller":7,"value":100}}
+{"program":{"channel":1,"program":0}}
+{"pitch":{"channel":1,"value":8192}}
+{"raw":[144,60,127]}
+{"sysex":[126,127,9,1]}
+{"clock":true}
+{"transport":"start"}
+```
+
+**端口73 — WebSocket (`/midi`)：**
+
+- 双向MIDI流传输
+- 支持所有MIDI消息类型的JSON格式收发
+- 接收到的MIDI消息实时推送到WebSocket客户端
+- 客户端可通过WebSocket发送MIDI命令（格式同REST API）
+- 适合MuseScore等软件通过局域网进行MIDI输入/输出
+
+**API管理命令：**
+| 命令 | 说明 |
+|------|------|
+| `api` | 查看API管理菜单 |
+| `api start` | 启动API服务 |
+| `api stop` | 停止API服务 |
+| `api config` | 配置白名单/黑名单模式 |
+| `api whitelist add <ip>` | 添加IP到白名单 |
+| `api whitelist del <ip>` | 从白名单移除IP |
+| `api blacklist add <ip>` | 添加IP到黑名单 |
+| `api blacklist del <ip>` | 从黑名单移除IP |
+| `api autostart on` | 启用WiFi连接自动启动 |
+| `api autostart off` | 禁用WiFi连接自动启动 |
+
+**安全特性：**
+- **单IP并发限制**：同一时间最多1个客户端使用API，防止资源耗尽
+- **白名单模式**：仅允许指定IP访问
+- **黑名单模式**：阻止指定IP访问
+- **默认开机自启动**：WiFi连接成功后自动启动API（可通过`api autostart off`关闭）
+
+### 快速开始
+
+```
+1. 进入MIDI模式: mode midi
+2. 配置引脚: config  (设置TX/RX GPIO)
+3. 连接5-pin DIN MIDI设备
+4. 发送测试: note 1 60 100  (通道1, 中央C, 力度100)
+5. 监听消息: receive       (按ENTER停止)
+```
+
+WiFi API使用：
+```
+1. 配置WiFi并连接成功
+2. 启动API: api start
+3. 电脑访问: curl http://esp32-ip:72/info
+4. WebSocket: ws://esp32-ip:73/midi
+```
 
 ## Wiki
 

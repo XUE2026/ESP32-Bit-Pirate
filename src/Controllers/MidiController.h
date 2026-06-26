@@ -4,6 +4,7 @@
 #include "Interfaces/ITerminalView.h"
 #include "Interfaces/IInput.h"
 #include "Services/MidiService.h"
+#include "Services/MidiApiService.h"
 #include "Transformers/ArgTransformer.h"
 #include "Managers/UserInputManager.h"
 #include "Shells/HelpShell.h"
@@ -15,6 +16,7 @@ public:
         ITerminalView& terminalView,
         IInput& terminalInput,
         MidiService& midiService,
+        MidiApiService& midiApiService,
         ArgTransformer& argTransformer,
         UserInputManager& userInputManager,
         HelpShell& helpShell
@@ -42,9 +44,24 @@ private:
     void handleReset();
     void handleHelp();
 
+    // USB MIDI
+    void handleUsb();
+    void handleUsbStart();
+    void handleUsbStop();
+
+    // API management
+    void handleApi();
+    void handleApiStart();
+    void handleApiStop();
+    void handleApiConfig();
+    void handleApiWhitelist(const TerminalCommand& cmd);
+    void handleApiBlacklist(const TerminalCommand& cmd);
+    void handleApiAutostart(const TerminalCommand& cmd);
+
     ITerminalView& terminalView;
     IInput& terminalInput;
     MidiService& midiService;
+    MidiApiService& midiApiService;
     ArgTransformer& argTransformer;
     UserInputManager& userInputManager;
     HelpShell& helpShell;

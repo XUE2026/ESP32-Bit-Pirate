@@ -40,6 +40,7 @@ DependencyProvider::DependencyProvider(ITerminalView &terminalView, IDeviceView 
       cellService(),
       fmService(),
       midiService(),
+      midiApiService(midiService),
 
       // Transformers
       commandTransformer(),
@@ -114,7 +115,7 @@ DependencyProvider::DependencyProvider(ITerminalView &terminalView, IDeviceView 
       cellController(terminalView, terminalInput, cellService, argTransformer, atTransformer, userInputManager, helpShell, cellCallShell, cellSmsShell),
       fmController(terminalView, terminalInput, deviceView, fmService, argTransformer, userInputManager, helpShell, fmBroadcastShell),
       expanderController(terminalView, terminalInput, uartService, argTransformer, userInputManager, helpShell),
-      midiController(terminalView, terminalInput, midiService, argTransformer, userInputManager, helpShell)
+      midiController(terminalView, terminalInput, midiService, midiApiService, argTransformer, userInputManager, helpShell)
 {
 }
 
@@ -157,6 +158,7 @@ LittleFsService &DependencyProvider::getLittleFsService() { return littleFsServi
 CellService &DependencyProvider::getCellService() { return cellService; }
 FmService &DependencyProvider::getFmService() { return fmService; }
 MidiService &DependencyProvider::getMidiService() { return midiService; }
+MidiApiService &DependencyProvider::getMidiApiService() { return midiApiService; }
 
 // Controllers
 UartController &DependencyProvider::getUartController() { return uartController; }

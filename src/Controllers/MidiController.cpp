@@ -10,6 +10,7 @@ MidiController::MidiController(
     ITerminalView& terminalView,
     IInput& terminalInput,
     MidiService& midiService,
+    MidiApiService& midiApiService,
     ArgTransformer& argTransformer,
     UserInputManager& userInputManager,
     HelpShell& helpShell
@@ -17,6 +18,7 @@ MidiController::MidiController(
     : terminalView(terminalView),
       terminalInput(terminalInput),
       midiService(midiService),
+      midiApiService(midiApiService),
       argTransformer(argTransformer),
       userInputManager(userInputManager),
       helpShell(helpShell)
@@ -42,6 +44,20 @@ void MidiController::handleCommand(const TerminalCommand& cmd) {
     else if (root == "continue") handleContinue_();
     else if (root == "thru") handleThru(cmd);
     else if (root == "reset") handleReset();
+    else if (root == "usb") {
+        if (cmd.getSubcommand() == "start") handleUsbStart();
+        else if (cmd.getSubcommand() == "stop") handleUsbStop();
+        else handleUsb();
+    }
+    else if (root == "api") {
+        if (cmd.getSubcommand() == "start") handleApiStart();
+        else if (cmd.getSubcommand() == "stop") handleApiStop();
+        else if (cmd.getSubcommand() == "config") handleApiConfig();
+        else if (cmd.getSubcommand() == "whitelist") handleApiWhitelist(cmd);
+        else if (cmd.getSubcommand() == "blacklist") handleApiBlacklist(cmd);
+        else if (cmd.getSubcommand() == "autostart") handleApiAutostart(cmd);
+        else handleApi();
+    }
     else handleHelp();
 }
 
@@ -350,6 +366,199 @@ void MidiController::handleReset() {
     midiService.end();
     configured = false;
     terminalView.println("MIDI: Reset. Type 'config' to reconfigure.");
+}
+
+/*
+USB MIDI - show status and submenu
+*/
+void MidiController::handleUsb() {
+    if (midiApiService.isRunning()) {
+        terminalView.println("\nUSB MIDI (API): Running on ports 72 (HTTP) and 73 (WS).");
+        terminalView.println("  Active clients : " + std::to_string(midiApiService.getActiveClientCount()));
+        terminalView.println("  Total requests : " + std::to_string(midiApiService.getTotalRequests()));
+        terminalView.println("  Autostart      : " + std::string(midiApiService.getAutoStart() ? "enabled" : "disabled"));
+        terminalView.println("");
+        terminalView.println("Subcommands: start, stop");
+    } else {
+        terminalView.println("\nUSB MIDI (API): Not running.");
+        terminalView.println("Type 'usb start' to start, 'usb stop' to stop.\n");
+    }
+}
+
+/*
+USB MIDI - start
+*/
+void MidiController::handleUsbStart() {
+    if (midiApiService.isRunning()) {
+        terminalView.println("USB MIDI: Already running.\n");
+        return;
+    }
+    if (midiApiService.begin()) {
+        terminalView.println("USB MIDI (API): Started on ports 72 (HTTP) and 73 (WS).\n");
+    } else {
+        terminalView.println("USB MIDI (API): Failed to start.\n");
+    }
+}
+
+/*
+USB MIDI - stop
+*/
+void MidiController::handleUsbStop() {
+    if (!midiApiService.isRunning()) {
+        terminalView.println("USB MIDI: Not running.\n");
+        return;
+    }
+    midiApiService.end();
+    terminalView.println("USB MIDI (API): Stopped.\n");
+}
+
+/*
+API management - show submenu
+*/
+void MidiController::handleApi() {
+    terminalView.println("\nMIDI API Management");
+    terminalView.println("  Status  : " + std::string(midiApiService.isRunning() ? "running" : "stopped"));
+    terminalView.println("  Mode    : " + std::string(midiApiService.isWhitelistMode() ? "whitelist" : "blacklist"));
+    terminalView.println("  Clients : " + std::to_string(midiApiService.getActiveClientCount()));
+    terminalView.println("  Reqs    : " + std::to_string(midiApiService.getTotalRequests()));
+    terminalView.println("  Autostrt: " + std::string(midiApiService.getAutoStart() ? "yes" : "no"));
+    terminalView.println("");
+    terminalView.println("Subcommands:");
+    terminalView.println("  api start              Start the API server");
+    terminalView.println("  api stop               Stop the API server");
+    terminalView.println("  api config             Configure whitelist/blacklist mode");
+    terminalView.println("  api whitelist add/del <ip>   Manage whitelist");
+    terminalView.println("  api blacklist add/del <ip>   Manage blacklist");
+    terminalView.println("  api autostart on|off         Toggle auto-start on WiFi connect\n");
+}
+
+/*
+API management - start server
+*/
+void MidiController::handleApiStart() {
+    if (midiApiService.isRunning()) {
+        terminalView.println("MIDI API: Already running.\n");
+        return;
+    }
+    if (midiApiService.begin()) {
+        terminalView.println("MIDI API: Server started on ports 72 (HTTP) and 73 (WS).\n");
+    } else {
+        terminalView.println("MIDI API: Failed to start server.\n");
+    }
+}
+
+/*
+API management - stop server
+*/
+void MidiController::handleApiStop() {
+    if (!midiApiService.isRunning()) {
+        terminalView.println("MIDI API: Not running.\n");
+        return;
+    }
+    midiApiService.end();
+    terminalView.println("MIDI API: Server stopped.\n");
+}
+
+/*
+API management - configure whitelist/blacklist mode
+*/
+void MidiController::handleApiConfig() {
+    terminalView.println("\nMIDI API Access Control Configuration\n");
+
+    bool current = midiApiService.isWhitelistMode();
+    std::string prompt = "Use whitelist mode? (Y=whitelist / n=blacklist) [current: " +
+                         std::string(current ? "whitelist" : "blacklist") + "]";
+    bool useWhitelist = userInputManager.readYesNo(prompt, current);
+    midiApiService.setAccessControlMode(useWhitelist);
+
+    terminalView.println("Access control mode set to: " + std::string(useWhitelist ? "whitelist" : "blacklist"));
+
+    auto list = useWhitelist ? midiApiService.getWhitelist() : midiApiService.getBlacklist();
+    terminalView.println("Current " + std::string(useWhitelist ? "whitelist" : "blacklist") + " entries:");
+    if (list.empty()) {
+        terminalView.println("  (none)");
+    } else {
+        for (const auto& entry : list) {
+            terminalView.println("  " + entry);
+        }
+    }
+    terminalView.println("");
+}
+
+/*
+API management - whitelist add/remove
+*/
+void MidiController::handleApiWhitelist(const TerminalCommand& cmd) {
+    auto args = cmd.getArgs();
+    if (args.size() < 2) {
+        terminalView.println("Usage: api whitelist add|del <ip>");
+        terminalView.println("  add <ip>   Add an IP to the whitelist");
+        terminalView.println("  del <ip>   Remove an IP from the whitelist\n");
+        return;
+    }
+
+    const std::string& action = args[0];
+    const std::string& ip = args[1];
+
+    if (action == "add") {
+        midiApiService.addToWhitelist(ip);
+        terminalView.println("MIDI API: Added " + ip + " to whitelist.\n");
+    } else if (action == "del" || action == "remove") {
+        midiApiService.removeFromWhitelist(ip);
+        terminalView.println("MIDI API: Removed " + ip + " from whitelist.\n");
+    } else {
+        terminalView.println("MIDI API: Unknown action '" + action + "'. Use add or del.\n");
+    }
+}
+
+/*
+API management - blacklist add/remove
+*/
+void MidiController::handleApiBlacklist(const TerminalCommand& cmd) {
+    auto args = cmd.getArgs();
+    if (args.size() < 2) {
+        terminalView.println("Usage: api blacklist add|del <ip>");
+        terminalView.println("  add <ip>   Add an IP to the blacklist");
+        terminalView.println("  del <ip>   Remove an IP from the blacklist\n");
+        return;
+    }
+
+    const std::string& action = args[0];
+    const std::string& ip = args[1];
+
+    if (action == "add") {
+        midiApiService.addToBlacklist(ip);
+        terminalView.println("MIDI API: Added " + ip + " to blacklist.\n");
+    } else if (action == "del" || action == "remove") {
+        midiApiService.removeFromBlacklist(ip);
+        terminalView.println("MIDI API: Removed " + ip + " from blacklist.\n");
+    } else {
+        terminalView.println("MIDI API: Unknown action '" + action + "'. Use add or del.\n");
+    }
+}
+
+/*
+API management - toggle auto-start
+*/
+void MidiController::handleApiAutostart(const TerminalCommand& cmd) {
+    auto args = cmd.getArgs();
+    if (args.empty()) {
+        bool current = midiApiService.getAutoStart();
+        terminalView.println("MIDI API: Auto-start is " + std::string(current ? "enabled" : "disabled"));
+        terminalView.println("Usage: api autostart on|off\n");
+        return;
+    }
+
+    const std::string& val = args[0];
+    if (val == "on" || val == "1" || val == "true" || val == "yes") {
+        midiApiService.setAutoStart(true);
+        terminalView.println("MIDI API: Auto-start enabled. Server will start on WiFi connect.\n");
+    } else if (val == "off" || val == "0" || val == "false" || val == "no") {
+        midiApiService.setAutoStart(false);
+        terminalView.println("MIDI API: Auto-start disabled.\n");
+    } else {
+        terminalView.println("MIDI API: Invalid value '" + val + "'. Use on or off.\n");
+    }
 }
 
 /*
