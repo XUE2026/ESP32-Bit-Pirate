@@ -40,6 +40,7 @@ and injecting shared instances of core components
 #include "Services/UsbS3Service.h"
 #include "Services/CellService.h"
 #include "Services/FmService.h"
+#include "Services/MidiService.h"
 #include "Controllers/UartController.h"
 #include "Controllers/I2cController.h"
 #include "Controllers/OneWireController.h"
@@ -65,6 +66,7 @@ and injecting shared instances of core components
 #include "Controllers/CellController.h"
 #include "Controllers/FmController.h"
 #include "Controllers/ExpanderController.h"
+#include "Controllers/MidiController.h"
 #include "Transformers/TerminalCommandTransformer.h"
 #include "Transformers/InstructionTransformer.h"
 #include "Transformers/ArgTransformer.h"
@@ -152,6 +154,7 @@ public:
     LittleFsService &getLittleFsService();
     CellService &getCellService();
     FmService &getFmService();
+    MidiService &getMidiService();
 
     // Controllers
     UartController &getUartController();
@@ -178,6 +181,7 @@ public:
     CellController &getCellController();
     FmController &getFmController();
     ExpanderController &getExpanderController();
+    MidiController &getMidiController();
 
     // Transformers
     TerminalCommandTransformer &getCommandTransformer();
@@ -273,6 +277,7 @@ private:
     CellService cellService;
     UsbS3Service usbService;
     FmService fmService;
+    MidiService midiService;
 
     // Controllers
     UartController uartController;
@@ -299,6 +304,7 @@ private:
     CellController cellController;
     FmController fmController;
     ExpanderController expanderController;
+    MidiController midiController;
 
     // Transformers
     TerminalCommandTransformer commandTransformer;

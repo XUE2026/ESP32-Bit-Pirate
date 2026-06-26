@@ -42,6 +42,7 @@ private:
     void cmdFm();
     void cmdCell();
     void cmdExpander();
+    void cmdMidi();
     void cmdAll();
 
     // helpers

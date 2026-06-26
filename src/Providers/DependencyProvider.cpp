@@ -39,6 +39,7 @@ DependencyProvider::DependencyProvider(ITerminalView &terminalView, IDeviceView 
       usbService(),
       cellService(),
       fmService(),
+      midiService(),
 
       // Transformers
       commandTransformer(),
@@ -112,7 +113,8 @@ DependencyProvider::DependencyProvider(ITerminalView &terminalView, IDeviceView 
       usbController(terminalView, terminalInput, deviceInput, usbService, argTransformer, userInputManager, helpShell, usbAdapterShell, mouseShell),
       cellController(terminalView, terminalInput, cellService, argTransformer, atTransformer, userInputManager, helpShell, cellCallShell, cellSmsShell),
       fmController(terminalView, terminalInput, deviceView, fmService, argTransformer, userInputManager, helpShell, fmBroadcastShell),
-      expanderController(terminalView, terminalInput, uartService, argTransformer, userInputManager, helpShell)
+      expanderController(terminalView, terminalInput, uartService, argTransformer, userInputManager, helpShell),
+      midiController(terminalView, terminalInput, midiService, argTransformer, userInputManager, helpShell)
 {
 }
 
@@ -154,6 +156,7 @@ Rf24Service &DependencyProvider::getRf24Service() { return rf24Service; }
 LittleFsService &DependencyProvider::getLittleFsService() { return littleFsService; }
 CellService &DependencyProvider::getCellService() { return cellService; }
 FmService &DependencyProvider::getFmService() { return fmService; }
+MidiService &DependencyProvider::getMidiService() { return midiService; }
 
 // Controllers
 UartController &DependencyProvider::getUartController() { return uartController; }
@@ -180,6 +183,7 @@ Rf24Controller &DependencyProvider::getRf24Controller() { return rf24Controller;
 CellController &DependencyProvider::getCellController() { return cellController; }
 FmController &DependencyProvider::getFmController() { return fmController; }
 ExpanderController &DependencyProvider::getExpanderController() { return expanderController; }
+MidiController &DependencyProvider::getMidiController() { return midiController; }
 
 // Transformers
 TerminalCommandTransformer &DependencyProvider::getCommandTransformer() { return commandTransformer; }

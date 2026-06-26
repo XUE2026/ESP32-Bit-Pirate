@@ -179,6 +179,9 @@ void ActionDispatcher::dispatchCommand(const TerminalCommand& cmd) {
         case ModeEnum::EXPANDER:
             provider.getExpanderController().handleCommand(cmd);
             break;
+        case ModeEnum::MIDI:
+            provider.getMidiController().handleCommand(cmd);
+            break;
     }
 
    // Handled in specific mode, we need to rerender the pinout view
@@ -361,6 +364,9 @@ void ActionDispatcher::setCurrentMode(ModeEnum newMode) {
             provider.getExpanderController().ensureConfigured();
             state.setCurrentMode(ModeEnum::HIZ); // return to HIZ after the uart bridge
             newMode = ModeEnum::HIZ; // to display hiz just after
+            break;
+        case ModeEnum::MIDI:
+            provider.getMidiController().ensureConfigured();
             break;
         default:
             break;

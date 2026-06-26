@@ -30,6 +30,7 @@ enum class ModeEnum {
     FM,
     CELL,
     EXPANDER,
+    MIDI,
     COUNT
 };
 
@@ -66,6 +67,7 @@ public:
         {ModeEnum::FM,        "FM"},
         {ModeEnum::CELL,      "CELL"},
         {ModeEnum::EXPANDER,  "EXPANDER"},
+        {ModeEnum::MIDI,      "MIDI"},
     };
 
     inline static constexpr size_t modeEntriesCount = sizeof(modeEntries) / sizeof(modeEntries[0]);

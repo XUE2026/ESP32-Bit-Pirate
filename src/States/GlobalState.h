@@ -153,6 +153,10 @@ private:
     uint8_t rfidSdaPin = 1;
     uint8_t rfidSclPin = 2;
 
+    // MIDI Default Configuration  
+    uint8_t midiTxPin = 1;
+    uint8_t midiRxPin = 2;
+
     // JTAG Default Pin
     std::vector<uint8_t> jtagScanPins = { 1, 3, 5, 7, 9 };
 
@@ -410,6 +414,13 @@ public:
 
     void setRfidSdaPin(uint8_t pin) { rfidSdaPin = pin; }
     void setRfidSclPin(uint8_t pin) { rfidSclPin = pin; }
+
+    // MIDI
+    uint8_t getMidiTxPin() const { return midiTxPin; }
+    uint8_t getMidiRxPin() const { return midiRxPin; }
+
+    void setMidiTxPin(uint8_t pin) { midiTxPin = pin; }
+    void setMidiRxPin(uint8_t pin) { midiRxPin = pin; }
 
     // SD Card
     uint8_t getSdCardCsPin() const { return sdCardCsPin; }

@@ -70,6 +70,7 @@ void HelpShell::run(ModeEnum currentMode, bool select) {
         case 21: cmdFm();        break;
         case 22: cmdCell();      break;
         case 23: cmdExpander(); break;
+        case 24: cmdMidi(); break;
         default:
             break;
     }
@@ -505,6 +506,29 @@ void HelpShell::cmdExpander() {
     printLines(lines, (int)(sizeof(lines) / sizeof(lines[0])));
 }
 
+void HelpShell::cmdMidi() {
+    printHeader("MIDI");
+
+    static const char* const lines[] = {
+        "send <hex>           - Send raw MIDI bytes",
+        "receive              - Receive and decode MIDI messages",
+        "sniff                - Raw hex dump of MIDI traffic",
+        "note <ch> <n> [vel]  - Send Note (ch=1-16, note=0-127, [vel=0-127])",
+        "cc <ch> <c> [val]    - Send Control Change (ch=1-16, ctrl=0-127, [val=0-127])",
+        "pgm <ch> <p>         - Send Program Change (ch=1-16, prog=0-127)",
+        "pitch <ch> [val]     - Send Pitch Bend (ch=1-16, [val=0-16383], center=8192)",
+        "clock                - Send real-time Clock messages continuously",
+        "start                - Send Start real-time message",
+        "stop                 - Send Stop real-time message",
+        "continue             - Send Continue real-time message",
+        "thru [on/off]        - Toggle MIDI Thru (echo RX to TX)",
+        "reset                - Reset interface",
+        "config               - Configure MIDI UART GPIO pins"
+    };
+
+    printLines(lines, (int)(sizeof(lines) / sizeof(lines[0])));
+}
+
 void HelpShell::cmdAll() {
     cmdOneWire();
     cmdUart();
@@ -529,4 +553,5 @@ void HelpShell::cmdAll() {
     cmdFm();
     cmdCell();
     cmdExpander();
+    cmdMidi();
 }
