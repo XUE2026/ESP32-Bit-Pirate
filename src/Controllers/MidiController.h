@@ -44,7 +44,7 @@ private:
     void handleReset();
     void handleHelp();
 
-    // USB MIDI
+    // USB MIDI (via WebSocket API on port 73)
     void handleUsb();
     void handleUsbStart();
     void handleUsbStop();
