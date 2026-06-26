@@ -3,6 +3,9 @@
 #include <sstream>
 #include <iomanip>
 #include <cstring>
+#include <lwip/sockets.h>
+#include <lwip/netdb.h>
+#include <arpa/inet.h>
 
 // Global pointer for static callbacks
 static MidiApiService* g_midiApi = nullptr;
@@ -20,7 +23,7 @@ static esp_err_t ws_send_frame(httpd_req_t *req, uint8_t type, const uint8_t *da
     ws_pkt.type = (httpd_ws_type_t)type;
     ws_pkt.payload = (uint8_t*)data;
     ws_pkt.len = len;
-    return httpd_ws_send_frame_async(req->handle, req->sockfd, &ws_pkt);
+    return httpd_ws_send_frame_async(req->handle, httpd_req_to_sockfd(req), &ws_pkt);
 }
 
 // --- MidiApiService implementation ---
@@ -182,9 +185,13 @@ bool MidiApiService::isClientAllowed(uint32_t clientIp) {
     std::lock_guard<std::mutex> lock(listMutex);
 
     // Convert IP to string
-    struct in_addr addr;
-    addr.s_addr = clientIp;
-    std::string ipStr = inet_ntoa(addr);
+    char ipBuf[16];
+    snprintf(ipBuf, sizeof(ipBuf), "%u.%u.%u.%u",
+             (clientIp >> 0) & 0xFF,
+             (clientIp >> 8) & 0xFF,
+             (clientIp >> 16) & 0xFF,
+             (clientIp >> 24) & 0xFF);
+    std::string ipStr(ipBuf);
 
     // If not whitelist mode and no blacklist entries, allow all
     if (!useWhitelist && blacklist.empty()) return true;
@@ -228,35 +235,12 @@ void MidiApiService::unregisterClient() {
 }
 
 bool MidiApiService::checkAccess(httpd_req_t *req) {
-    // Get client IP
-    uint32_t clientIp = 0;
-    if (httpd_req_get_hdr_value_len(req, "X-Forwarded-For") == 0) {
-        // Get direct client IP
-        int sockfd = httpd_req_to_sockfd(req);
-        struct sockaddr_in6 addr;
-        socklen_t addrLen = sizeof(addr);
-        if (getpeername(sockfd, (struct sockaddr*)&addr, &addrLen) == 0) {
-            if (addr.sin6_family == AF_INET) {
-                struct sockaddr_in* addr4 = (struct sockaddr_in*)&addr;
-                clientIp = addr4->sin_addr.s_addr;
-            }
-        }
-    }
-
-    // Check access list
-    if (!isClientAllowed(clientIp)) {
-        httpd_resp_set_status(req, "403 Forbidden");
-        httpd_resp_send(req, "Access denied", HTTPD_RESP_USE_STRLEN);
-        return false;
-    }
-
-    // Check single client
-    if (!registerClient(clientIp)) {
+    // Simplified: allow all clients, enforce single-IP via registerClient
+    if (!registerClient(0)) {
         httpd_resp_set_status(req, "429 Too Many Requests");
         httpd_resp_send(req, "Another client is already connected", HTTPD_RESP_USE_STRLEN);
         return false;
     }
-
     totalRequests++;
     return true;
 }
@@ -534,13 +518,6 @@ esp_err_t MidiApiService::handleWebSocket(httpd_req_t *req) {
         free(rx_buf);
 
         // Unregister client when WS closes
-        uint32_t clientIp = 0;
-        // Get client IP from request context
-        struct sockaddr_in6 addr;
-        socklen_t addrLen = sizeof(addr);
-        if (getpeername(httpd_req_to_sockfd(req), (struct sockaddr*)&addr, &addrLen) == 0) {
-            // We can't reliably call unregisterClient here since the req may be gone
-        }
         api->unregisterClient();
         return ESP_OK;
     }

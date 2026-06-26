@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstdint>
 
-#define MIDI_PORT UART_NUM_2
+
 
 // MIDI channel voice message status byte masks (high nibble)
 enum class MidiMessageType : uint8_t {

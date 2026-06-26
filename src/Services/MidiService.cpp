@@ -3,7 +3,9 @@
 #include <iomanip>
 
 static constexpr uint32_t MIDI_BAUD = 31250;
-static constexpr uint32_t MIDI_CONFIG = SERIAL_8N1;
+
+// Use Serial2 (UART_NUM_2) for MIDI
+static HardwareSerial& midiSerial = Serial2;
 
 MidiService::~MidiService() {
     end();
@@ -15,25 +17,8 @@ bool MidiService::begin(uint8_t txPin, uint8_t rxPin) {
     txPin_ = txPin;
     rxPin_ = rxPin;
 
-    // Configure UART for MIDI (31250 baud, 8N1)
-    uart_config_t uartConfig = {
-        .baud_rate = MIDI_BAUD,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .rx_flow_ctrl_thresh = 0,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-
-    esp_err_t err = uart_param_config(MIDI_PORT, &uartConfig);
-    if (err != ESP_OK) return false;
-
-    err = uart_set_pin(MIDI_PORT, txPin, rxPin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    if (err != ESP_OK) return false;
-
-    err = uart_driver_install(MIDI_PORT, 256, 0, 0, nullptr, 0);
-    if (err != ESP_OK) return false;
+    // Start HardwareSerial at MIDI baud rate
+    midiSerial.begin(MIDI_BAUD, SERIAL_8N1, rxPin, txPin);
 
     active = true;
     runningStatus_ = 0;
@@ -43,7 +28,7 @@ bool MidiService::begin(uint8_t txPin, uint8_t rxPin) {
 
 void MidiService::end() {
     if (active) {
-        uart_driver_delete(MIDI_PORT);
+        midiSerial.end();
         active = false;
     }
     runningStatus_ = 0;
@@ -52,15 +37,15 @@ void MidiService::end() {
 
 void MidiService::sendByte(uint8_t b) {
     if (!active) return;
-    uart_write_bytes(MIDI_PORT, &b, 1);
+    midiSerial.write(b);
     if (thruEnabled) {
-        rxBuffer_.push_back(b); // echo back for reading
+        rxBuffer_.push_back(b);
     }
 }
 
 void MidiService::sendRaw(const std::vector<uint8_t>& data) {
     if (!active || data.empty()) return;
-    uart_write_bytes(MIDI_PORT, data.data(), data.size());
+    midiSerial.write(data.data(), data.size());
 }
 
 // --- MIDI Message Senders ---
@@ -68,25 +53,25 @@ void MidiService::sendRaw(const std::vector<uint8_t>& data) {
 void MidiService::sendNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
     uint8_t status = static_cast<uint8_t>(MidiMessageType::NoteOn) | (channel & 0x0F);
     uint8_t buf[3] = { status, note & 0x7F, velocity & 0x7F };
-    uart_write_bytes(MIDI_PORT, buf, 3);
+    midiSerial.write(buf, 3);
 }
 
 void MidiService::sendNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) {
     uint8_t status = static_cast<uint8_t>(MidiMessageType::NoteOff) | (channel & 0x0F);
     uint8_t buf[3] = { status, note & 0x7F, velocity & 0x7F };
-    uart_write_bytes(MIDI_PORT, buf, 3);
+    midiSerial.write(buf, 3);
 }
 
 void MidiService::sendControlChange(uint8_t channel, uint8_t controller, uint8_t value) {
     uint8_t status = static_cast<uint8_t>(MidiMessageType::ControlChange) | (channel & 0x0F);
     uint8_t buf[3] = { status, controller & 0x7F, value & 0x7F };
-    uart_write_bytes(MIDI_PORT, buf, 3);
+    midiSerial.write(buf, 3);
 }
 
 void MidiService::sendProgramChange(uint8_t channel, uint8_t program) {
     uint8_t status = static_cast<uint8_t>(MidiMessageType::ProgramChange) | (channel & 0x0F);
     uint8_t buf[2] = { status, program & 0x7F };
-    uart_write_bytes(MIDI_PORT, buf, 2);
+    midiSerial.write(buf, 2);
 }
 
 void MidiService::sendPitchBend(uint8_t channel, uint16_t value) {
@@ -94,66 +79,66 @@ void MidiService::sendPitchBend(uint8_t channel, uint16_t value) {
     uint8_t lsb = value & 0x7F;
     uint8_t msb = (value >> 7) & 0x7F;
     uint8_t buf[3] = { status, lsb, msb };
-    uart_write_bytes(MIDI_PORT, buf, 3);
+    midiSerial.write(buf, 3);
 }
 
 void MidiService::sendPolyKeyPress(uint8_t channel, uint8_t note, uint8_t pressure) {
     uint8_t status = static_cast<uint8_t>(MidiMessageType::PolyKeyPress) | (channel & 0x0F);
     uint8_t buf[3] = { status, note & 0x7F, pressure & 0x7F };
-    uart_write_bytes(MIDI_PORT, buf, 3);
+    midiSerial.write(buf, 3);
 }
 
 void MidiService::sendChannelPress(uint8_t channel, uint8_t pressure) {
     uint8_t status = static_cast<uint8_t>(MidiMessageType::ChannelPress) | (channel & 0x0F);
     uint8_t buf[2] = { status, pressure & 0x7F };
-    uart_write_bytes(MIDI_PORT, buf, 2);
+    midiSerial.write(buf, 2);
 }
 
 void MidiService::sendSongPosition(uint16_t beats) {
     uint8_t lsb = beats & 0x7F;
     uint8_t msb = (beats >> 7) & 0x7F;
     uint8_t buf[3] = { static_cast<uint8_t>(MidiMessageType::SongPosition), lsb, msb };
-    uart_write_bytes(MIDI_PORT, buf, 3);
+    midiSerial.write(buf, 3);
 }
 
 void MidiService::sendSongSelect(uint8_t song) {
     uint8_t buf[2] = { static_cast<uint8_t>(MidiMessageType::SongSelect), song & 0x7F };
-    uart_write_bytes(MIDI_PORT, buf, 2);
+    midiSerial.write(buf, 2);
 }
 
 void MidiService::sendTuneRequest() {
     uint8_t b = static_cast<uint8_t>(MidiMessageType::TuneRequest);
-    uart_write_bytes(MIDI_PORT, &b, 1);
+    midiSerial.write(b);
 }
 
 void MidiService::sendClock() {
     uint8_t b = static_cast<uint8_t>(MidiMessageType::Clock);
-    uart_write_bytes(MIDI_PORT, &b, 1);
+    midiSerial.write(b);
 }
 
 void MidiService::sendStart() {
     uint8_t b = static_cast<uint8_t>(MidiMessageType::Start);
-    uart_write_bytes(MIDI_PORT, &b, 1);
+    midiSerial.write(b);
 }
 
 void MidiService::sendContinue() {
     uint8_t b = static_cast<uint8_t>(MidiMessageType::Continue);
-    uart_write_bytes(MIDI_PORT, &b, 1);
+    midiSerial.write(b);
 }
 
 void MidiService::sendStop() {
     uint8_t b = static_cast<uint8_t>(MidiMessageType::Stop);
-    uart_write_bytes(MIDI_PORT, &b, 1);
+    midiSerial.write(b);
 }
 
 void MidiService::sendActiveSensing() {
     uint8_t b = static_cast<uint8_t>(MidiMessageType::ActiveSensing);
-    uart_write_bytes(MIDI_PORT, &b, 1);
+    midiSerial.write(b);
 }
 
 void MidiService::sendSystemReset() {
     uint8_t b = static_cast<uint8_t>(MidiMessageType::SystemReset);
-    uart_write_bytes(MIDI_PORT, &b, 1);
+    midiSerial.write(b);
 }
 
 void MidiService::sendSysEx(const std::vector<uint8_t>& data) {
@@ -162,14 +147,12 @@ void MidiService::sendSysEx(const std::vector<uint8_t>& data) {
     packet.push_back(static_cast<uint8_t>(MidiMessageType::SystemExclusive));
     packet.insert(packet.end(), data.begin(), data.end());
     packet.push_back(static_cast<uint8_t>(MidiMessageType::SysExEnd));
-    uart_write_bytes(MIDI_PORT, packet.data(), packet.size());
+    midiSerial.write(packet.data(), packet.size());
 }
 
 bool MidiService::available() const {
     if (!active) return false;
-    size_t available = 0;
-    uart_get_buffered_data_len(MIDI_PORT, &available);
-    return available > 0 || !rxBuffer_.empty();
+    return midiSerial.available() > 0 || !rxBuffer_.empty();
 }
 
 uint8_t MidiService::readByte() {
@@ -179,15 +162,15 @@ uint8_t MidiService::readByte() {
         rxBuffer_.erase(rxBuffer_.begin());
         return b;
     }
-    uint8_t b = 0;
-    int len = uart_read_bytes(MIDI_PORT, &b, 1, 0);
-    if (len == 1) return b;
+    if (midiSerial.available()) {
+        return (uint8_t)midiSerial.read();
+    }
     return 0;
 }
 
 void MidiService::flush() {
     if (!active) return;
-    uart_flush(MIDI_PORT);
+    while (midiSerial.available()) midiSerial.read();
     rxBuffer_.clear();
     runningStatus_ = 0;
 }
@@ -219,7 +202,6 @@ size_t MidiService::parseMessage(const std::vector<uint8_t>& data, size_t offset
                 i++;
                 break;
             }
-            // Allow real-time interleaving in SysEx
             if (data[i] >= 0xF8) {
                 i++;
                 continue;
@@ -230,14 +212,14 @@ size_t MidiService::parseMessage(const std::vector<uint8_t>& data, size_t offset
         return i - offset;
     }
 
-    if (s == 0xF1) { // Time Code Quarter Frame
+    if (s == 0xF1) {
         if (offset + 1 >= data.size()) return 0;
         msg.type = MidiMessageType::TimeCode;
         msg.data1 = data[offset + 1] & 0x7F;
         return 2;
     }
 
-    if (s == 0xF2) { // Song Position Pointer
+    if (s == 0xF2) {
         if (offset + 2 >= data.size()) return 0;
         msg.type = MidiMessageType::SongPosition;
         uint16_t pos = data[offset + 1] | (data[offset + 2] << 7);
@@ -246,14 +228,14 @@ size_t MidiService::parseMessage(const std::vector<uint8_t>& data, size_t offset
         return 3;
     }
 
-    if (s == 0xF3) { // Song Select
+    if (s == 0xF3) {
         if (offset + 1 >= data.size()) return 0;
         msg.type = MidiMessageType::SongSelect;
         msg.data1 = data[offset + 1] & 0x7F;
         return 2;
     }
 
-    if (s == 0xF6 || s == 0xF7) { // Tune Request / SysEx End
+    if (s == 0xF6 || s == 0xF7) {
         msg.type = static_cast<MidiMessageType>(s);
         return 1;
     }
@@ -265,15 +247,15 @@ size_t MidiService::parseMessage(const std::vector<uint8_t>& data, size_t offset
         size_t needed = 0;
 
         switch (typeBits) {
-            case 0x80: // Note Off
-            case 0x90: // Note On
-            case 0xA0: // Poly Key Press
-            case 0xB0: // Control Change
+            case 0x80:
+            case 0x90:
+            case 0xA0:
+            case 0xB0:
                 needed = 3; break;
-            case 0xC0: // Program Change
-            case 0xD0: // Channel Press
+            case 0xC0:
+            case 0xD0:
                 needed = 2; break;
-            case 0xE0: // Pitch Bend
+            case 0xE0:
                 needed = 3; break;
             default:
                 return 0;
@@ -285,11 +267,11 @@ size_t MidiService::parseMessage(const std::vector<uint8_t>& data, size_t offset
         msg.channel = chan;
         msg.data1 = data[offset + 1] & 0x7F;
         msg.data2 = (needed == 3) ? (data[offset + 2] & 0x7F) : 0;
-        runningStatus_ = s; // save running status
+        runningStatus_ = s;
         return needed;
     }
 
-    // Running status: previous status byte is reused
+    // Running status
     if (runningStatus_ != 0 && s < 0x80) {
         uint8_t typeBits = runningStatus_ & 0xF0;
         uint8_t chan = runningStatus_ & 0x0F;
@@ -300,7 +282,7 @@ size_t MidiService::parseMessage(const std::vector<uint8_t>& data, size_t offset
             case 0x90:
             case 0xA0:
             case 0xB0:
-                needed = 2; break; // status + 1 byte already consumed = need 1 more
+                needed = 2; break;
             case 0xC0:
             case 0xD0:
                 needed = 1; break;
@@ -319,7 +301,7 @@ size_t MidiService::parseMessage(const std::vector<uint8_t>& data, size_t offset
         return needed;
     }
 
-    return 0; // unrecognized
+    return 0;
 }
 
 bool MidiService::readMessage(MidiMessage& msg, uint32_t timeoutMs) {
@@ -327,27 +309,17 @@ bool MidiService::readMessage(MidiMessage& msg, uint32_t timeoutMs) {
 
     uint32_t start = millis();
     while (millis() - start < timeoutMs) {
-        // Drain UART into buffer
-        size_t available = 0;
-        uart_get_buffered_data_len(MIDI_PORT, &available);
-        if (available > 0) {
-            size_t oldSize = rxBuffer_.size();
-            rxBuffer_.resize(oldSize + available);
-            int read = uart_read_bytes(MIDI_PORT, &rxBuffer_[oldSize], available, 0);
-            if (read > 0) rxBuffer_.resize(oldSize + read);
+        while (midiSerial.available()) {
+            rxBuffer_.push_back((uint8_t)midiSerial.read());
         }
 
-        // Try to parse from buffer
         if (!rxBuffer_.empty()) {
             size_t consumed = parseMessage(rxBuffer_, 0, msg);
             if (consumed > 0) {
                 rxBuffer_.erase(rxBuffer_.begin(), rxBuffer_.begin() + consumed);
                 return true;
             }
-            // If we have data but can't parse, and running status allows it
-            // try with running status
             if (runningStatus_ != 0) {
-                // Could be running status bytes
                 MidiMessage rsMsg;
                 size_t c = parseMessage(rxBuffer_, 0, rsMsg);
                 if (c > 0) {
@@ -366,17 +338,10 @@ bool MidiService::readMessage(MidiMessage& msg, uint32_t timeoutMs) {
 bool MidiService::pollMessage(MidiMessage& msg) {
     if (!active) return false;
 
-    // Drain UART into buffer
-    size_t available = 0;
-    uart_get_buffered_data_len(MIDI_PORT, &available);
-    if (available > 0) {
-        size_t oldSize = rxBuffer_.size();
-        rxBuffer_.resize(oldSize + available);
-        int read = uart_read_bytes(MIDI_PORT, &rxBuffer_[oldSize], available, 0);
-        if (read > 0) rxBuffer_.resize(oldSize + read);
+    while (midiSerial.available()) {
+        rxBuffer_.push_back((uint8_t)midiSerial.read());
     }
 
-    // Try to parse
     if (!rxBuffer_.empty()) {
         size_t consumed = parseMessage(rxBuffer_, 0, msg);
         if (consumed > 0) {
