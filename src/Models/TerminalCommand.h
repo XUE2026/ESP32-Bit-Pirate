@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
 
 class TerminalCommand {
 public:
@@ -15,6 +18,17 @@ public:
 
     std::string getArgs() const { return args; }
     void setArgs(const std::string& a) { args = a; }
+
+    // Returns parsed arguments as vector of strings (split by whitespace)
+    std::vector<std::string> getArgsVector() const {
+        std::vector<std::string> result;
+        std::istringstream iss(args);
+        std::string token;
+        while (iss >> token) {
+            result.push_back(token);
+        }
+        return result;
+    }
 
 private:
     std::string root;
