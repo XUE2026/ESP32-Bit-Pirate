@@ -288,6 +288,7 @@ esp_err_t MidiApiService::handleGetInfo(httpd_req_t *req) {
     doc["clients_active"] = api->getActiveClientCount();
     doc["access_mode"] = api->isWhitelistMode() ? "whitelist" : "blacklist";
     doc["total_requests"] = api->getTotalRequests();
+    doc["usb_midi_device"] = api->isUsbMidiConnected() ? "connected" : "disconnected";
 
     std::string response;
     serializeJson(doc, response);

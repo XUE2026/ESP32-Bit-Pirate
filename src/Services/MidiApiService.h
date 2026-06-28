@@ -58,6 +58,10 @@ public:
     // Statistics
     unsigned long getTotalRequests() const { return totalRequests; }
 
+    // USB MIDI device connection status (set by ActionDispatcher)
+    void setUsbMidiConnected(bool connected) { usbMidiConnected = connected; }
+    bool isUsbMidiConnected() const { return usbMidiConnected; }
+
     // The MIDI stream WebSocket handler sends all received MIDI messages
     // to the connected WS client
     void notifyMidiMessage(const MidiMessage& msg);
@@ -83,6 +87,9 @@ private:
     
     // Statistics
     unsigned long totalRequests = 0;
+
+    // USB MIDI device connection status
+    bool usbMidiConnected = false;
     
     // Internal: check access and register
     bool checkAccess(httpd_req_t *req);
