@@ -30,10 +30,28 @@ void ActionDispatcher::setup(TerminalTypeEnum terminalType, std::string terminal
 Run loop
 */
 void ActionDispatcher::run() {
+    MidiMessage usbMsg; // Buffer for USB MIDI polling
     while (true) {
-        // MIDI API auto-start on WiFi connect
+        // MIDI: USB MIDI device polling and API auto-start
         auto& midiApi = provider.getMidiApiService();
         auto& wifiService = provider.getWifiService();
+        auto& usbMidi = provider.getUsbMidiService();
+
+        // USB MIDI device background polling
+        if (usbMidi.isActive()) {
+            // Update USB MIDI connection status for API
+            midiApi.setUsbMidiConnected(usbMidi.isConnected());
+
+            // Poll incoming USB MIDI messages and route to UART (Thru)
+            if (usbMidi.pollMessage(usbMsg)) {
+                auto& midiService = provider.getMidiService();
+                if (midiService.isActive() && midiService.getThru()) {
+                    midiService.sendMidi(usbMsg);
+                }
+            }
+        }
+
+        // MIDI API auto-start on WiFi connect
         if (wifiService.isConnected() && midiApi.getAutoStart() && !midiApi.isRunning()) {
             midiApi.begin();
         }

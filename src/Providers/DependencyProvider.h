@@ -42,6 +42,7 @@ and injecting shared instances of core components
 #include "Services/FmService.h"
 #include "Services/MidiService.h"
 #include "Services/MidiApiService.h"
+#include "Services/USBMidiService.h"
 #include "Controllers/UartController.h"
 #include "Controllers/I2cController.h"
 #include "Controllers/OneWireController.h"
@@ -157,6 +158,7 @@ public:
     FmService &getFmService();
     MidiService &getMidiService();
     MidiApiService &getMidiApiService();
+    USBMidiService &getUsbMidiService();
 
     // Controllers
     UartController &getUartController();
@@ -281,6 +283,7 @@ private:
     FmService fmService;
     MidiService midiService;
     MidiApiService midiApiService;
+    USBMidiService usbMidiService;
 
     // Controllers
     UartController uartController;

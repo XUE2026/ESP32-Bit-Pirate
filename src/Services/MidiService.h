@@ -84,6 +84,9 @@ public:
     void sendSystemReset();
     void sendSysEx(const std::vector<uint8_t>& data);
 
+    // Send a MidiMessage object via UART (for USB MIDI Thru routing)
+    void sendMidi(const MidiMessage& msg);
+
     // Send raw bytes
     void sendRaw(const std::vector<uint8_t>& data);
     void sendByte(uint8_t b);

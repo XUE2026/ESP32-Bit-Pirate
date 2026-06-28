@@ -11,6 +11,7 @@ MidiController::MidiController(
     IInput& terminalInput,
     MidiService& midiService,
     MidiApiService& midiApiService,
+    USBMidiService& usbMidiService,
     ArgTransformer& argTransformer,
     UserInputManager& userInputManager,
     HelpShell& helpShell
@@ -19,6 +20,7 @@ MidiController::MidiController(
       terminalInput(terminalInput),
       midiService(midiService),
       midiApiService(midiApiService),
+      usbMidiService(usbMidiService),
       argTransformer(argTransformer),
       userInputManager(userInputManager),
       helpShell(helpShell)
@@ -44,7 +46,7 @@ void MidiController::handleCommand(const TerminalCommand& cmd) {
     else if (root == "continue") handleContinue_();
     else if (root == "thru") handleThru(cmd);
     else if (root == "reset") handleReset();
-    else if (root == "usb") {
+    else if (root == "usbx") {
         if (cmd.getSubcommand() == "start") handleUsbStart();
         else if (cmd.getSubcommand() == "stop") handleUsbStop();
         else handleUsb();
@@ -372,31 +374,49 @@ void MidiController::handleReset() {
 USB MIDI - show status and submenu
 */
 void MidiController::handleUsb() {
-    if (midiApiService.isRunning()) {
-        terminalView.println("\nUSB MIDI (API): Running on ports 72 (HTTP) and 73 (WS).");
-        terminalView.println("  Active clients : " + std::to_string(midiApiService.getActiveClientCount()));
-        terminalView.println("  Total requests : " + std::to_string(midiApiService.getTotalRequests()));
-        terminalView.println("  Autostart      : " + std::string(midiApiService.getAutoStart() ? "enabled" : "disabled"));
-        terminalView.println("");
-        terminalView.println("Subcommands: start, stop");
+    terminalView.println("\n=== USB MIDI Device (Type-C) ===");
+    if (usbMidiService.isActive()) {
+        bool connected = usbMidiService.isConnected();
+        terminalView.println("  USB Device  : " + std::string(connected ? "Connected (host detected)" : "Waiting for host..."));
+        terminalView.println("  Begin       : yes");
     } else {
-        terminalView.println("\nUSB MIDI (API): Not running.");
-        terminalView.println("Type 'usb start' to start, 'usb stop' to stop.\n");
+        terminalView.println("  USB Device  : Stopped");
+        terminalView.println("  Begin       : no");
     }
+
+    terminalView.println("\n=== MIDI WiFi API (port 72/73) ===");
+    if (midiApiService.isRunning()) {
+        terminalView.println("  Status      : Running");
+        terminalView.println("  Active IPs  : " + std::to_string(midiApiService.getActiveClientCount()));
+        terminalView.println("  Total reqs  : " + std::to_string(midiApiService.getTotalRequests()));
+        terminalView.println("  Autostart   : " + std::string(midiApiService.getAutoStart() ? "enabled" : "disabled"));
+    } else {
+        terminalView.println("  Status      : Stopped");
+    }
+
+    terminalView.println("");
+    terminalView.println("Subcommands:");
+    terminalView.println("  usbx start          - Start USB MIDI device (TinyUSB Type-C)");
+    terminalView.println("  usbx stop           - Stop USB MIDI device");
+    terminalView.println("  api                 - MIDI API management menu");
+    terminalView.println("  api start|stop      - Start/stop WiFi API server");
+    terminalView.println("  api autostart on|off - Auto-start API on WiFi connect\n");
 }
 
 /*
 USB MIDI - start
 */
 void MidiController::handleUsbStart() {
-    if (midiApiService.isRunning()) {
-        terminalView.println("USB MIDI: Already running.\n");
+    if (usbMidiService.isActive()) {
+        bool connected = usbMidiService.isConnected();
+        terminalView.println("USB MIDI Device: Already active. " + std::string(connected ? "(connected to host)" : "(waiting for host)") + "\n");
         return;
     }
-    if (midiApiService.begin()) {
-        terminalView.println("USB MIDI (API): Started on ports 72 (HTTP) and 73 (WS).\n");
+    if (usbMidiService.begin()) {
+        terminalView.println("USB MIDI Device: Started. Connect via Type-C to a computer.\n");
+        terminalView.println("  The device will appear as a MIDI interface.\n");
     } else {
-        terminalView.println("USB MIDI (API): Failed to start.\n");
+        terminalView.println("USB MIDI Device: Failed to start.\n");
     }
 }
 
@@ -404,12 +424,12 @@ void MidiController::handleUsbStart() {
 USB MIDI - stop
 */
 void MidiController::handleUsbStop() {
-    if (!midiApiService.isRunning()) {
-        terminalView.println("USB MIDI: Not running.\n");
+    if (!usbMidiService.isActive()) {
+        terminalView.println("USB MIDI Device: Not active.\n");
         return;
     }
-    midiApiService.end();
-    terminalView.println("USB MIDI (API): Stopped.\n");
+    usbMidiService.end();
+    terminalView.println("USB MIDI Device: Stopped.\n");
 }
 
 /*

@@ -165,6 +165,49 @@ void MidiService::sendSysEx(const std::vector<uint8_t>& data) {
     uart_write_bytes(MIDI_PORT, packet.data(), packet.size());
 }
 
+void MidiService::sendMidi(const MidiMessage& msg) {
+    if (!active) return;
+
+    switch (msg.type) {
+        case MidiMessageType::NoteOff:
+            sendNoteOff(msg.channel, msg.data1, msg.data2); break;
+        case MidiMessageType::NoteOn:
+            sendNoteOn(msg.channel, msg.data1, msg.data2); break;
+        case MidiMessageType::PolyKeyPress:
+            sendPolyKeyPress(msg.channel, msg.data1, msg.data2); break;
+        case MidiMessageType::ControlChange:
+            sendControlChange(msg.channel, msg.data1, msg.data2); break;
+        case MidiMessageType::ProgramChange:
+            sendProgramChange(msg.channel, msg.data1); break;
+        case MidiMessageType::ChannelPress:
+            sendChannelPress(msg.channel, msg.data1); break;
+        case MidiMessageType::PitchBend:
+            sendPitchBend(msg.channel, (uint16_t)(msg.data1 | (msg.data2 << 7))); break;
+        case MidiMessageType::Clock:
+            sendClock(); break;
+        case MidiMessageType::Start:
+            sendStart(); break;
+        case MidiMessageType::Continue:
+            sendContinue(); break;
+        case MidiMessageType::Stop:
+            sendStop(); break;
+        case MidiMessageType::TuneRequest:
+            sendTuneRequest(); break;
+        case MidiMessageType::ActiveSensing:
+            sendActiveSensing(); break;
+        case MidiMessageType::SystemReset:
+            sendSystemReset(); break;
+        case MidiMessageType::SongPosition:
+            sendSongPosition((uint16_t)(msg.data1 | (msg.data2 << 7))); break;
+        case MidiMessageType::SongSelect:
+            sendSongSelect(msg.data1); break;
+        case MidiMessageType::SystemExclusive:
+            sendSysEx(msg.sysExData); break;
+        default:
+            break;
+    }
+}
+
 bool MidiService::available() const {
     if (!active) return false;
     size_t available = 0;

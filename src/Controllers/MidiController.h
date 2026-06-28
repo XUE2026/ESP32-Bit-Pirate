@@ -5,6 +5,7 @@
 #include "Interfaces/IInput.h"
 #include "Services/MidiService.h"
 #include "Services/MidiApiService.h"
+#include "Services/USBMidiService.h"
 #include "Transformers/ArgTransformer.h"
 #include "Managers/UserInputManager.h"
 #include "Shells/HelpShell.h"
@@ -17,6 +18,7 @@ public:
         IInput& terminalInput,
         MidiService& midiService,
         MidiApiService& midiApiService,
+        USBMidiService& usbMidiService,
         ArgTransformer& argTransformer,
         UserInputManager& userInputManager,
         HelpShell& helpShell
@@ -62,6 +64,7 @@ private:
     IInput& terminalInput;
     MidiService& midiService;
     MidiApiService& midiApiService;
+    USBMidiService& usbMidiService;
     ArgTransformer& argTransformer;
     UserInputManager& userInputManager;
     HelpShell& helpShell;
