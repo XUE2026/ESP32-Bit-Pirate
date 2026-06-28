@@ -3,6 +3,9 @@
 #include <sstream>
 #include <iomanip>
 #include <cstring>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 // Global pointer for static callbacks
 static MidiApiService* g_midiApi = nullptr;
@@ -20,7 +23,7 @@ static esp_err_t ws_send_frame(httpd_req_t *req, uint8_t type, const uint8_t *da
     ws_pkt.type = (httpd_ws_type_t)type;
     ws_pkt.payload = (uint8_t*)data;
     ws_pkt.len = len;
-    return httpd_ws_send_frame_async(req->handle, req->sockfd, &ws_pkt);
+    return httpd_ws_send_frame_async(req->handle, httpd_req_to_sockfd(req), &ws_pkt);
 }
 
 // --- MidiApiService implementation ---

@@ -1,4 +1,5 @@
 #include "MidiService.h"
+#include "driver/uart.h"
 #include <sstream>
 #include <iomanip>
 
