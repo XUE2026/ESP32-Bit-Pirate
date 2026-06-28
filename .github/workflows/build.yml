@@ -1,0 +1,32 @@
+name: Build ESP32 Bit Pirate
+
+on:
+  push:
+    branches:
+      - pioarduino
+  pull_request:
+    branches:
+      - pioarduino
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: python:3.11-slim
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PlatformIO and git
+        run: pip install platformio && apt-get update && apt-get install -y git
+
+      - name: Build s3-devkit-n16-r8
+        run: pio run -e s3-devkit-n16-r8
+
+      - name: Upload firmware
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-s3-devkit-n16-r8
+          path: .pio/build/s3-devkit-n16-r8/firmware.bin
+          retention-days: 30
