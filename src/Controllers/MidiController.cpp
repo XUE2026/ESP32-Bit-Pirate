@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
+#include <algorithm>
 
 /*
 Constructor
@@ -129,13 +130,29 @@ void MidiController::handleSend(const TerminalCommand& cmd) {
     std::stringstream ss(data);
     std::string token;
     while (ss >> token) {
+        bool isHex = false;
         if (token.size() >= 2 && token.substr(0, 2) == "0x") {
-            bytes.push_back((uint8_t)std::stoul(token, nullptr, 16));
-        } else if (argTransformer.isValidHex(token)) {
-            bytes.push_back((uint8_t)std::stoul(token, nullptr, 16));
-        } else if (argTransformer.isValidInt(token)) {
-            bytes.push_back((uint8_t)std::stoul(token));
+            isHex = true;
+        } else if (token.size() >= 2 && token[0] == '$') {
+            isHex = true;
+        } else if (token.size() >= 3 && token[0] == '0' && (token[1] == 'x' || token[1] == 'X')) {
+            isHex = true;
         } else {
+            // Check if it's hex without prefix (all hex digits)
+            isHex = !token.empty() && std::all_of(token.begin(), token.end(), [](char c) {
+                return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            });
+            if (isHex && token.size() <= 2) {
+                isHex = true; // single or double hex digit
+            }
+        }
+        try {
+            if (isHex) {
+                bytes.push_back((uint8_t)std::stoul(token, nullptr, 16));
+            } else {
+                bytes.push_back((uint8_t)std::stoul(token));
+            }
+        } catch (...) {
             terminalView.println("MIDI send: invalid byte '" + token + "'");
             return;
         }
